@@ -72,13 +72,17 @@ class QweatherlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     def generate_jwt(self, pid, kid, private_key_pem, iss=None):
         try:
+            # Docs require iss (developer ID), sub (project ID), iat, exp.
+            # https://dev.qweather.com/docs/configuration/authentication/
+            if not iss:
+                _LOGGER.error("JWT 缺少开发者 ID (iss)")
+                return None
             payload = {
                 'iat': int(time.time()) - 30,
                 'exp': int(time.time()) + 900,
                 'sub': pid,
+                'iss': iss,
             }
-            if iss:
-                payload['iss'] = iss
             headers = {'kid': kid}
             return jwt.encode(
                 payload,
@@ -212,7 +216,8 @@ class QweatherlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             headers = {"X-QW-Api-Key": credential}
 
         if not re.match(r"^-?\d+\.?\d*,-?\d+\.?\d*$", location.replace(" ", "")):
-            geo_url = f"https://geoapi.qweather.com/v2/city/lookup?location={location}&lang=zh"
+            # Geo must use the project API Host; legacy geoapi.qweather.com returns 404 for JWT.
+            geo_url = f"https://{data[CONF_HOST]}/geo/v2/city/lookup?location={location}&lang=zh"
             geo_data = await self.hass.async_add_executor_job(self.get_data, geo_url, headers)
             
             if geo_data and geo_data.get('code') == "200" and geo_data.get('location'):
