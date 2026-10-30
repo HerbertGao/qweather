@@ -52,6 +52,7 @@ from .const import (
     CONF_PROJECT_ID,
     CONF_KEY_ID,
     CONF_PRIVATE_KEY,
+    CONF_DEV_ID,
 )
 from .condition import CONDITION_MAP, EXCEPTIONAL
 
@@ -259,7 +260,12 @@ class WeatherData:
     def generate_jwt(self):
         try:
             now_ts = int(time.time())
-            payload = {'iat': now_ts - 30, 'exp': now_ts + 900, 'sub': self._config.get(CONF_PROJECT_ID)}
+            payload = {
+                'iat': now_ts - 30,
+                'exp': now_ts + 900,
+                'sub': self._config.get(CONF_PROJECT_ID),
+                'iss': self._config.get(CONF_DEV_ID),
+            }
             headers = {'kid': self._config.get(CONF_KEY_ID)}
             return jwt.encode(payload, self._config.get(CONF_PRIVATE_KEY), algorithm='EdDSA', headers=headers)
         except Exception as e:
